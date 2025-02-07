@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Ameba Search Repeat
 // @namespace        http://tampermonkey.net/
-// @version        2.7
+// @version        2.8
 // @description        ブログ内検索の再検索を実行可能にする
 // @author        Ameba Blog User
 // @match        https://search.ameba.jp/search/entry/*.html?aid=*
@@ -60,6 +60,20 @@ function search_next(){ // 検索結果ページごとにURLは更新される
         entry_id_DB=[]; // リセット
         for(k=0; k<blogDB.length; k++){
             entry_id_DB[k]=blogDB[k][0]; }} // ID検索用の配列を作成
+
+
+
+    focus_in(); // 検索直後は検索枠にキャレットを入れる
+
+    function focus_in(){
+        let this_url=location.href;
+        let index_page=this_url.indexOf('&p=');
+        if(index_page==-1){ // 検索直後の先頭ページ
+            let inp=document.querySelector('.PcSuggestForm_Input');
+            if(inp){
+                let len=inp.value.length;
+                inp.focus();
+                inp.setSelectionRange(len, len); }}}
 
 
 
