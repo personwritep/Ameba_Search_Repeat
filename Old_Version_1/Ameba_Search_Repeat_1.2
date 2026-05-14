@@ -1,0 +1,131 @@
+// ==UserScript==
+// @name         Ameba Search Repeat
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  ブログ内検索の再検索を実行可能にする
+// @author       Ameba Blog User
+// @match        https://search.ameba.jp/search/entry/*
+// @run-at        document-start
+// @grant         none
+// ==/UserScript==
+
+
+addEventListener('DOMContentLoaded', function(){
+
+    let target=document.querySelector('body'); // 監視 target
+    let monitor=new MutationObserver(search_next);
+    monitor.observe(target, {childList: true}); // 検索待受け開始
+
+    search_next();
+
+    function search_next(){ // 検索結果ページごとにURLは更新される
+
+        let blogDB={}; // 閲覧記事のID/チェックフラグの記録配列
+        let entry_id_DB; // ID検索用の配列
+
+        let read_json=localStorage.getItem('ASR_DB_back'); // ローカルストレージ 保存名
+        blogDB=JSON.parse(read_json);
+        if(blogDB==null){
+            blogDB=[['ASR00000000', '0']]; }
+        //        mode=blogDB[0][1]; // 起動時に動作フラグを取得
+        //        blogDB[0][1]='0'; // リロード時等のためにリセット
+        let write_json=JSON.stringify(blogDB);
+        localStorage.setItem('ASR_DB_back', write_json); // ローカルストレージ 保存
+
+        reg_set();
+
+        function reg_set(){
+            let k;
+            entry_id_DB=[]; // リセット
+            for(k=0; k<blogDB.length; k++){
+                entry_id_DB[k]=blogDB[k][0]; }} // ID検索用の配列を作成
+
+        list_set();
+
+        function list_set(){
+            let entrylist=[];
+            let entrylink=[];
+            let entryhref=[];
+            let history=[];
+
+            entrylist=document.querySelectorAll('.PcEntryListItem');
+            for(let k=0; k<entrylist.length; k++){
+                entrylink[k]=entrylist[k].querySelector('.PcEntryListItem >a');
+                entryhref[k]=entrylink[k].getAttribute('href');
+                entryhref[k]=entryhref[k].slice(-16, -5);
+
+                entrylink[k].setAttribute('target', '_blank');
+                mark(k);
+                list_listen(k); }
+
+            function mark(k){
+                history[k]=document.createElement('p');
+                history[k].innerText='\u00A0';
+                history[k].setAttribute('class', 'history');
+                history[k].setAttribute('style', 'position: absolute; top: 40px; left: 10px; ' +
+                                        'width: 14px; height: 14px; border-radius: 4px; background: #fff');
+                if(entrylink[k].querySelector('.history')){
+                    entrylink[k].querySelector('.history').remove(); }
+                entrylink[k].appendChild(history[k]);
+                if(entry_id_DB.indexOf(entryhref[k]) !=-1){
+                    history[k].style.background='#009688'; }}
+
+            function list_listen(k){
+                entrylink[k].addEventListener('click', function(){
+                    if(entry_id_DB.indexOf(entryhref[k])==-1){
+                        blogDB.push([entryhref[k], 1]); // 閲覧履歴に記事IDを追加
+                        let write_json=JSON.stringify(blogDB);
+                        localStorage.setItem('ASR_DB_back', write_json); // ストレージ保存
+                        entrylink[k].querySelector('.history').style.background='#009688';
+                    }}, false); }}
+
+        reset_sw();
+
+        function reset_sw(){
+            let box=document.querySelector('.PcResultPagination');
+            let sw=document.createElement('p');
+            sw.innerText='Reset';
+            sw.setAttribute('class', 'history_reset');
+            sw.setAttribute('style', 'position: absolute; left: 0; padding: 2px 6px 0; color: #fff; ' +
+                            'border-radius: 4px; background: #009688; cursor: pointer');
+            if(!box.querySelector('.history_reset')){
+                box.appendChild(sw); }
+            sw.addEventListener('click', function(){
+                let conf_str='🟩　リストの閲覧履歴マークをリセットします';
+                let ok=confirm(conf_str);
+                if(ok){
+                    blogDB=[['ASR00000000', '0']];
+                    let write_json=JSON.stringify(blogDB);
+                    localStorage.setItem('ASR_DB_back', write_json); // ストレージ保存
+                    reg_set();
+                    list_set(); }}, false); }
+
+
+
+        let this_url=location.href;
+        let index_after=this_url.indexOf('.html?aid=');
+
+        if(index_after==-1){ ; } // ブログ内検索から出た時に動作するのを防止
+        else{
+            let user_id_a=this_url.slice(index_after);
+            let index_before=user_id_a.indexOf('&p=');
+            let user_id;
+            if(index_before==-1){
+                user_id=user_id_a; }
+            else{
+                user_id=user_id_a.substring(0, index_before); }
+
+            let search_box_react=document.querySelector('#react-autowhatever-1');
+            if(search_box_react){
+                search_box_react.remove(); }
+            let search_button=document.querySelector('.PcSearchForm_Button');
+
+            search_button.addEventListener('click', function(e){
+                let input_box=document.querySelector('.PcSuggestForm_Input').value
+                if(input_box!=''){
+                    location.href='https://search.ameba.jp/search/entry/' + input_box + user_id; }
+                e.preventDefault();
+                e.stopPropagation(); }, false);
+
+        }} // search_next
+})
