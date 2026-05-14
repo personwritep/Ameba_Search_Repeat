@@ -1,0 +1,46 @@
+// ==UserScript==
+// @name         Ameba Search Repeat
+// @namespace    http://tampermonkey.net/
+// @version      0.2
+// @description  ブログ内検索の再検索を実行可能にする
+// @author       Ameba Blog User
+// @match        https://search.ameba.jp/search/entry/*
+// @run-at        document-start
+// @grant         none
+// ==/UserScript==
+
+
+addEventListener('DOMContentLoaded', function(){
+    var target=document.querySelector('body'); // 監視 target
+    var monitor=new MutationObserver(search_next);
+    monitor.observe(target, {childList: true}); // 検索待受け開始
+
+    search_next();
+
+    function search_next(){
+        let this_url=location.href;
+        let index_after=this_url.indexOf('.html?aid=');
+
+        if(index_after==-1){ ; } // ブログ内検索から出た時に動作するのを防止
+        else{
+            let user_id_a=this_url.slice(index_after);
+            let index_before=user_id_a.indexOf('&p=');
+            let user_id;
+            if(index_before==-1){
+                user_id=user_id_a; }
+            else{
+                user_id=user_id_a.substring(0, index_before); }
+
+            let search_box_react=document.querySelector('#react-autowhatever-1');
+            search_box_react.remove();
+            let search_button=document.querySelector('.PcSearchForm_Button');
+
+            search_button.addEventListener('click', function(e){
+                let input_box=document.querySelector('.PcSuggestForm_Input').value
+                if(input_box!=''){
+                    location.href='https://search.ameba.jp/search/entry/' + input_box + user_id; }
+                e.preventDefault();
+                e.stopPropagation(); }, false);
+
+        }} // search_next
+})
